@@ -22,12 +22,36 @@ endif()
 find_package(Threads REQUIRED)
 find_package(OpenGL REQUIRED)
 
-# FFmpeg Configuration via vcpkg
-find_package(avcodec REQUIRED)
-find_package(avformat REQUIRED)
-find_package(avutil REQUIRED)
-find_package(swscale REQUIRED)
-find_package(swresample REQUIRED)
+# FFmpeg Configuration for Windows
+if(WIN32)
+    if(DEFINED ENV{FFMPEG_ROOT})
+        set(FFMPEG_ROOT "$ENV{FFMPEG_ROOT}")
+        set(FFMPEG_INCLUDE_DIRS "$ENV{FFMPEG_INCLUDE_DIR}")
+        set(FFMPEG_LIB_DIR "$ENV{FFMPEG_LIB_DIR}")
+        
+        set(FFMPEG_LIBRARIES 
+            "${FFMPEG_LIB_DIR}/avcodec.lib"
+            "${FFMPEG_LIB_DIR}/avformat.lib"
+            "${FFMPEG_LIB_DIR}/avutil.lib"
+            "${FFMPEG_LIB_DIR}/swscale.lib"
+            "${FFMPEG_LIB_DIR}/swresample.lib"
+        )
+        
+        message(STATUS "Using explicit FFmpeg paths for Windows:")
+        message(STATUS "  Include: ${FFMPEG_INCLUDE_DIRS}")
+        message(STATUS "  Libs: ${FFMPEG_LIBRARIES}")
+    else()
+        message(FATAL_ERROR "FFMPEG_ROOT environment variable not set. Please install FFmpeg.")
+    endif()
+else()
+    # Linux/Mac - use pkg-config
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(FFMPEG REQUIRED libavcodec libavformat libavutil libswscale libswresample)
+    else()
+        message(FATAL_ERROR "FFmpeg not found and pkg-config not available.")
+    endif()
+endif()
 
 # nlohmann/json (header-only)
 find_package(nlohmann_json QUIET)
@@ -64,16 +88,13 @@ add_library(obs_core STATIC
 
 target_include_directories(obs_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${FFMPEG_INCLUDE_DIRS}
 )
 
 target_link_libraries(obs_core PUBLIC
     Threads::Threads
     OpenGL::GL
-    avcodec::avcodec
-    avformat::avformat
-    avutil::avutil
-    swscale::swscale
-    swresample::swresample
+    ${FFMPEG_LIBRARIES}
     spdlog::spdlog
     nlohmann_json::nlohmann_json
 )
@@ -127,4 +148,5 @@ install(DIRECTORY include/
 # Version info
 message(STATUS "OBS Propio v${PROJECT_VERSION}")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
-message(STATUS "FFmpeg found via vcpkg")
+message(STATUS "FFmpeg include: ${FFMPEG_INCLUDE_DIRS}")
+message(STATUS "FFmpeg libs: ${FFMPEG_LIBRARIES}")

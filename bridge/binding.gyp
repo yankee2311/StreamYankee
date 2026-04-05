@@ -11,7 +11,8 @@
       ],
       "include_dirs": [
         "<!@(node -p \"require('node-addon-api').include\")",
-        "../core/include"
+        "../core/include",
+        "C:/ffmpeg/include"
       ],
       "libraries": [
         "-L../core/build",
@@ -26,11 +27,11 @@
         ["OS=='win'", {
           "libraries": [
             "-l../core/build/Release/obs_core.lib",
-            "-lC:/vcpkg/installed/x64-windows-rel/lib/avcodec.lib",
-            "-lC:/vcpkg/installed/x64-windows-rel/lib/avformat.lib",
-            "-lC:/vcpkg/installed/x64-windows-rel/lib/avutil.lib",
-            "-lC:/vcpkg/installed/x64-windows-rel/lib/swscale.lib",
-            "-lC:/vcpkg/installed/x64-windows-rel/lib/swresample.lib",
+            "-lC:/ffmpeg/lib/avcodec.lib",
+            "-lC:/ffmpeg/lib/avformat.lib",
+            "-lC:/ffmpeg/lib/avutil.lib",
+            "-lC:/ffmpeg/lib/swscale.lib",
+            "-lC:/ffmpeg/lib/swresample.lib",
             "-lole32.lib",
             "-loleaut32.lib",
             "-lstrmiids.lib",

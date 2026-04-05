@@ -23,25 +23,36 @@ jobs:
     - name: Setup MSVC
       uses: ilammy/msvc-dev-cmd@v1
 
-    - name: Install FFmpeg via vcpkg
+    - name: Install FFmpeg
       shell: pwsh
       run: |
-        # Clone vcpkg if not exists
-        if (-not (Test-Path "C:\vcpkg")) {
-          git clone --depth 1 https://github.com/Microsoft/vcpkg.git C:\vcpkg
-        }
-
-        # Bootstrap vcpkg
-        C:\vcpkg\bootstrap-vcpkg.bat -disableMetrics
-
-        # Install FFmpeg with all features
-        C:\vcpkg\vcpkg install ffmpeg:x64-windows --triplet x64-windows-rel
-
-        # Set environment variables for CMake
-        $vcpkgRoot = "C:\vcpkg\installed\x64-windows-rel"
-        echo "VCPKG_ROOT=C:\vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        echo "VCPKG_ROOT_DIR=$vcpkgRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        echo "$vcpkgRoot\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        # Download FFmpeg essentials build (MSVC compatible with .lib files)
+        $ffmpegUrl = "https://github.com/GyanD/codexffmpeg/releases/download/7.0.1/ffmpeg-7.0.1-essentials_build.zip"
+        Write-Host "Downloading FFmpeg from $ffmpegUrl"
+        Invoke-WebRequest -Uri $ffmpegUrl -OutFile "ffmpeg.zip" -UseBasicParsing
+        Expand-Archive -Path "ffmpeg.zip" -DestinationPath "C:\ffmpeg" -Force
+        Remove-Item "ffmpeg.zip" -Force
+        
+        # Find the actual extracted folder
+        $ffmpegPath = Get-ChildItem "C:\ffmpeg" -Directory | Where-Object { $_.Name -like "ffmpeg*" } | Select-Object -First 1
+        $ffmpegRoot = $ffmpegPath.FullName
+        $ffmpegBin = "$ffmpegRoot\bin"
+        $ffmpegInclude = "$ffmpegRoot\include"
+        $ffmpegLib = "$ffmpegRoot\lib"
+        
+        Write-Host "FFmpeg Root: $ffmpegRoot"
+        Write-Host "FFmpeg Bin: $ffmpegBin"
+        Write-Host "FFmpeg Include: $ffmpegInclude"
+        Write-Host "FFmpeg Lib: $ffmpegLib"
+        
+        # Copy FFmpeg locally for bridge build
+        Copy-Item -Path "$ffmpegRoot\*" -Destination "ffmpeg" -Recurse -Force -ErrorAction SilentlyContinue
+        
+        # Set environment variables
+        echo "FFMPEG_ROOT=$ffmpegRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        echo "FFMPEG_INCLUDE_DIR=$ffmpegInclude" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        echo "FFMPEG_LIB_DIR=$ffmpegLib" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        echo $ffmpegBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     - name: Install Root Dependencies
       run: npm install
@@ -52,16 +63,15 @@ jobs:
         cd core
         if (-not (Test-Path build)) { New-Item -ItemType Directory -Path build | Out-Null }
         cd build
-
-        # Use vcpkg toolchain for MSVC and FFmpeg
+        
         cmake .. `
           -G "Visual Studio 17 2022" `
           -A x64 `
           -DCMAKE_BUILD_TYPE=Release `
-          -DCMAKE_TOOLCHAIN_FILE="C:\vcpkg\scripts\buildsystems\vcpkg.cmake" `
-          -DVCPKG_TARGET_TRIPLET=x64-windows-rel `
+          -DFFMPEG_ROOT="$env:FFMPEG_ROOT" `
+          -DFFMPEG_INCLUDE_DIR="$env:FFMPEG_INCLUDE_DIR" `
           -DBUILD_TESTS=OFF
-
+        
         cmake --build . --config Release --parallel
 
     - name: Install Bridge Dependencies
