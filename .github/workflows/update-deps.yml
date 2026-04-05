@@ -1,0 +1,44 @@
+name: Update Dependencies
+
+on:
+  schedule:
+    # Run weekly on Sundays at 3 AM UTC
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+
+jobs:
+  update-deps:
+    runs-on: ubuntu-latest
+    name: Update Dependencies
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Check for updates
+      id: updates
+      run: |
+        cd ui
+        npm outdated || true
+        cd ../bridge
+        npm outdated || true
+        cd ..
+        npm outdated || true
+
+    - name: Create issue if updates available
+      if: steps.updates.outcome == 'failure'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: '📅 Weekly dependency update available',
+            body: 'Some dependencies are outdated. Please review and update them.',
+            labels: ['dependencies', 'maintenance']
+          })

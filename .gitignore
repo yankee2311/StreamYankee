@@ -1,0 +1,127 @@
+# Build directories
+build/
+dist/
+out/
+*.build/
+
+# Node modules
+node_modules/
+
+# C++ objects
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+
+# Binaries (except distributed ones)
+*.exe
+!ui/dist/*.exe
+*.app
+!ui/dist/*.app
+*.dmg
+!ui/dist/*.dmg
+*.deb
+!ui/dist/*.deb
+*.rpm
+*.AppImage
+!ui/dist/*.AppImage
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# FFmpeg test files (keep distributed ones)
+*.mp4
+*.mkv
+*.flv
+*.ts
+*.avi
+!assets/videos/*.mp4
+
+# Project specific
+assets/videos/test_*.mp4
+core/build/
+bridge/build/
+
+# Native addons
+*.node
+
+# Package locks (keep package-lock.json)
+yarn.lock
+pnpm-lock.yaml
+
+# Electron
+ui/dist/main/main.js.map
+ui/dist/renderer/*.map
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+*.cmake
+!CMakeLists.txt
+
+# Visual Studio
+*.vcxproj
+*.vcxproj.filters
+*.sln
+*.suo
+*.user
+*.sdf
+*.opensdf
+*.pdb
+ipch/
+
+# Make
+Makefile
+*.make
+
+# Object files
+*.o.objcat
+*.obj
+
+# Archives
+*.zip
+*.tar.gz
+*.tar
+*.7z
+*.rar
+
+# Documentation generated
+docs/_build/
+docs/api/
+doxygen/
+
+# Secrets
+*.pem
+*.key
+*.p12
+secrets/

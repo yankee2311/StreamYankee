@@ -1,0 +1,22 @@
+{
+  "name": "obs-propio-bridge",
+  "version": "1.0.0",
+  "description": "Node.js native addon bridge for OBS Propio C++ core",
+  "main": "build/Release/obs_addon.node",
+  "scripts": {
+    "install": "node-gyp rebuild",
+    "build": "node-gyp build",
+    "build:debug": "node-gyp build --debug",
+    "clean": "node-gyp clean"
+  },
+  "dependencies": {
+    "node-addon-api": "^7.0.0"
+  },
+  "devDependencies": {
+    "node-gyp": "^10.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "gypfile": true
+}

@@ -1,0 +1,51 @@
+# Composite Action: Setup Build Environment
+name: 'Setup Build Environment'
+description: 'Setup common build environment for OBS Propio'
+inputs:
+  platform:
+    description: 'Target platform (windows, linux, macos)'
+    required: true
+    default: 'windows'
+
+runs:
+  using: 'composite'
+  steps:
+  - name: Setup Node.js
+    uses: actions/setup-node@v4
+    with:
+      node-version: '20'
+      cache: 'npm'
+
+  - name: Setup Python
+    uses: actions/setup-python@v5
+    with:
+      python-version: '3.12'
+
+  - name: Setup CMake
+    uses: lukka/get-cmake@latest
+
+  - name: Install Windows Dependencies
+    if: inputs.platform == 'windows'
+    shell: pwsh
+    run: |
+      choco install ffmpeg -y
+      echo "C:\ProgramData\chocolatey\bin" >> $env:GITHUB_PATH
+
+  - name: Setup MSVC (Windows)
+    if: inputs.platform == 'windows'
+    uses: ilammy/msvc-dev-cmd@v1
+
+  - name: Install Linux Dependencies
+    if: inputs.platform == 'linux'
+    shell: bash
+    run: |
+      sudo apt-get update
+      sudo apt-get install -y build-essential cmake ninja-build \
+        libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libswresample-dev \
+        libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
+        libgl1-mesa-dev libglu1-mesa-dev
+
+  - name: Install macOS Dependencies
+    if: inputs.platform == 'macos'
+    shell: bash
+    run: brew install cmake ninja ffmpeg

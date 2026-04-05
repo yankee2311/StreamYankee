@@ -1,0 +1,327 @@
+name: Build OBS Propio
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  CMAKE_VERSION: '3.28'
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    name: Build Windows
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup MSVC
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Setup CMake
+      uses: lukka/get-cmake@latest
+      with:
+        cmakeVersion: ${{ env.CMAKE_VERSION }}
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: |
+          package-lock.json
+          bridge/package-lock.json
+          ui/package-lock.json
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install FFmpeg
+      run: |
+        choco install ffmpeg -y
+        echo "C:\ProgramData\chocolatey\bin" >> $env:GITHUB_PATH
+
+    - name: Cache Core C++
+      uses: actions/cache@v4
+      with:
+        path: |
+          core/build
+          core/dist
+        key: core-windows-${{ hashFiles('core/**') }}
+        restore-keys: |
+          core-windows-
+
+    - name: Cache Node modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          node_modules
+          bridge/node_modules
+          ui/node_modules
+        key: node-modules-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          node-modules-
+
+    - name: Build Core C++
+      run: |
+        cd core
+        mkdir -Force build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=../dist -G "Visual Studio 17 2022" -A x64
+        cmake --build . --config Release --parallel
+        cmake --install . --prefix ../dist
+
+    - name: Build Bridge Node.js
+      run: |
+        cd bridge
+        npm install
+        npm run build
+
+    - name: Build UI
+      run: |
+        cd ui
+        npm install
+        npm run build
+
+    - name: Run Core Tests
+      run: |
+        cd core/build
+        ctest --output-on-failure --build-config Release
+
+    - name: Package Application
+      run: |
+        cd ui
+        npm run electron:build
+
+    - name: Upload Windows Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: obs-propio-windows
+        path: |
+          ui/dist/*.exe
+          ui/dist/*.yml
+        retention-days: 30
+
+  build-linux:
+    runs-on: ubuntu-latest
+    name: Build Linux
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install System Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          ninja-build \
+          pkg-config \
+          libavcodec-dev \
+          libavformat-dev \
+          libavutil-dev \
+          libswscale-dev \
+          libswresample-dev \
+          libx11-dev \
+          libxrandr-dev \
+          libxinerama-dev \
+          libxcursor-dev \
+          libxi-dev \
+          libgl1-mesa-dev \
+          libglu1-mesa-dev
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: |
+          package-lock.json
+          bridge/package-lock.json
+          ui/package-lock.json
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Cache Core C++
+      uses: actions/cache@v4
+      with:
+        path: |
+          core/build
+          core/dist
+        key: core-linux-${{ hashFiles('core/**') }}
+        restore-keys: |
+          core-linux-
+
+    - name: Build Core C++
+      run: |
+        cd core
+        mkdir -p build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=../dist -G Ninja
+        cmake --build . --parallel
+        cmake --install . --prefix ../dist
+
+    - name: Build Bridge Node.js
+      run: |
+        cd bridge
+        npm install
+        npm run build
+
+    - name: Build UI
+      run: |
+        cd ui
+        npm install
+        npm run build
+
+    - name: Run Core Tests
+      run: |
+        cd core/build
+        ctest --output-on-failure
+
+    - name: Package Application
+      run: |
+        cd ui
+        npm run electron:build -- --linux AppImage deb
+
+    - name: Upload Linux Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: obs-propio-linux
+        path: |
+          ui/dist/*.AppImage
+          ui/dist/*.deb
+          ui/dist/*.yml
+        retention-days: 30
+
+  build-macos:
+    runs-on: macos-latest
+    name: Build macOS
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install System Dependencies
+      run: |
+        brew install cmake ninja ffmpeg
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: |
+          package-lock.json
+          bridge/package-lock.json
+          ui/package-lock.json
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Cache Core C++
+      uses: actions/cache@v4
+      with:
+        path: |
+          core/build
+          core/dist
+        key: core-macos-${{ hashFiles('core/**') }}
+        restore-keys: |
+          core-macos-
+
+    - name: Build Core C++
+      run: |
+        cd core
+        mkdir -p build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=../dist -G Ninja
+        cmake --build . --parallel
+        cmake --install . --prefix ../dist
+
+    - name: Build Bridge Node.js
+      run: |
+        cd bridge
+        npm install
+        npm run build
+
+    - name: Build UI
+      run: |
+        cd ui
+        npm install
+        npm run build
+
+    - name: Run Core Tests
+      run: |
+        cd core/build
+        ctest --output-on-failure
+
+    - name: Package Application
+      run: |
+        cd ui
+        npm run electron:build -- --mac dmg zip
+
+    - name: Upload macOS Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: obs-propio-macos
+        path: |
+          ui/dist/*.dmg
+          ui/dist/*.zip
+          ui/dist/*.yml
+        retention-days: 30
+
+  test-integration:
+    runs-on: ${{ matrix.os }}
+    needs: [build-windows]
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        node-version: [18, 20, 21]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    - name: Install Dependencies
+      run: |
+        npm install
+        cd bridge && npm install
+        cd ../ui && npm install
+
+    - name: Run Integration Tests
+      run: npm test
+      continue-on-error: true
+
+    - name: Upload Test Results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ matrix.os }}-node${{ matrix.node-version }}
+        path: |
+          test-results/
+          coverage/
+        retention-days: 7

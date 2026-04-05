@@ -1,0 +1,257 @@
+name: Test OBS Propio
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  test-core-linux:
+    runs-on: ubuntu-latest
+    name: Test Core (Linux)
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          libavcodec-dev \
+          libavformat-dev \
+          libavutil-dev \
+          libswscale-dev
+
+    - name: Configure CMake
+      run: |
+        cd core
+        mkdir -p build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON
+
+    - name: Build
+      run: |
+        cd core/build
+        cmake --build . --parallel
+
+    - name: Run tests
+      run: |
+        cd core/build
+        ctest --output-on-failure --verbose
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: core-test-results-linux
+        path: core/build/Testing/
+        retention-days: 7
+
+  test-core-windows:
+    runs-on: windows-latest
+    name: Test Core (Windows)
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup MSVC
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Configure CMake
+      run: |
+        cd core
+        mkdir build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -G "Visual Studio 17 2022" -A x64
+
+    - name: Build
+      run: |
+        cd core/build
+        cmake --build . --config Debug
+
+    - name: Run tests
+      run: |
+        cd core/build
+        ctest --output-on-failure --verbose -C Debug
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: core-test-results-windows
+        path: core/build/Testing/
+        retention-days: 7
+
+  test-core-macos:
+    runs-on: macos-latest
+    name: Test Core (macOS)
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        brew install cmake ffmpeg
+
+    - name: Configure CMake
+      run: |
+        cd core
+        mkdir -p build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON
+
+    - name: Build
+      run: |
+        cd core/build
+        cmake --build . --parallel
+
+    - name: Run tests
+      run: |
+        cd core/build
+        ctest --output-on-failure --verbose
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: core-test-results-macos
+        path: core/build/Testing/
+        retention-days: 7
+
+  test-integration:
+    runs-on: ${{ matrix.os }}
+    name: Integration Tests
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        node-version: [18, 20]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    - name: Install dependencies
+      run: |
+        npm install
+        cd bridge && npm install
+        cd ../ui && npm install
+
+    - name: Run linting
+      run: npm run lint
+      continue-on-error: true
+
+    - name: Run type checks
+      run: |
+        cd ui
+        npx tsc --noEmit
+      continue-on-error: true
+
+    - name: Run integration tests
+      run: npm test
+      continue-on-error: true
+
+    - name: Upload coverage
+      uses: codecov/codecov-action@v3
+      if: always()
+      with:
+        files: ./coverage/lcov.info
+        flags: integration
+        name: integration-${{ matrix.os }}-node${{ matrix.node-version }}
+
+  code-quality:
+    runs-on: ubuntu-latest
+    name: Code Quality Checks
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install tools
+      run: |
+        npm install -g eslint prettier
+        pip install cpplint
+
+    - name: Check formatting
+      run: |
+        # Check C++ formatting
+        find core -name "*.cpp" -o -name "*.hpp" | xargs clang-format --dry-run --Werror || true
+        # Check JS/TS formatting
+        npx prettier --check "ui/**/*.{js,jsx,ts,tsx,json}" || true
+      continue-on-error: true
+
+    - name: Run ESLint
+      run: |
+        cd ui
+        npx eslint src/**/*.{ts,tsx} --max-warnings=0 || true
+      continue-on-error: true
+
+    - name: Run cpplint
+      run: |
+        cpplint --filter=-build/include_order,-runtime/references core/src/*.cpp core/include/*.hpp || true
+      continue-on-error: true
+
+    - name: Security audit
+      run: |
+        npm audit --audit-level=moderate || true
+      continue-on-error: true
+
+  benchmark:
+    runs-on: ubuntu-latest
+    name: Performance Benchmarks
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup build environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake libavcodec-dev libavformat-dev libavutil-dev libswscale-dev
+
+    - name: Build with profiling
+      run: |
+        cd core
+        mkdir -p build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Release -DENABLE_PROFILING=ON
+        cmake --build . --parallel
+
+    - name: Run benchmarks
+      run: |
+        cd core/build
+        if [ -f "./benchmark" ]; then
+          ./benchmark --benchmark_format=json --benchmark_out=benchmark_results.json
+        fi
+      continue-on-error: true
+
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: benchmark-results
+        path: core/build/benchmark_results.json
+        retention-days: 30

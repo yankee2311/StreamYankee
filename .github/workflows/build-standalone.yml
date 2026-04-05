@@ -1,0 +1,139 @@
+name: Build OBS Propio (Standalone)
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CMAKE_VERSION: '3.28'
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    name: Build ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest]
+        include:
+          - os: windows-latest
+            platform: windows
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup MSVC (Windows)
+      if: matrix.os == 'windows-latest'
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Setup CMake
+      uses: lukka/get-cmake@latest
+      with:
+        cmakeVersion: ${{ env.CMAKE_VERSION }}
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install FFmpeg (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        choco install ffmpeg -y
+        echo "C:\ProgramData\chocolatey\bin" >> $env:GITHUB_PATH
+
+    - name: Install FFmpeg (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: sudo apt-get install -y ffmpeg libavcodec-dev libavformat-dev libavutil-dev libswscale-dev
+
+    - name: Install FFmpeg (macOS)
+      if: matrix.os == 'macos-latest'
+      run: brew install ffmpeg
+
+    - name: Cache Core C++
+      uses: actions/cache@v4
+      with:
+        path: |
+          core/build
+          core/dist
+        key: core-${{ matrix.os }}-${{ hashFiles('core/**') }}
+        restore-keys: core-${{ matrix.os }}-
+
+    - name: Cache npm
+      uses: actions/cache@v4
+      with:
+        path: |
+          node_modules
+          bridge/node_modules
+          ui/node_modules
+        key: npm-${{ matrix.os }}-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: npm-${{ matrix.os }}-
+
+    - name: Build Core C++ (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        cd core
+        mkdir -Force build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=../dist -G "Visual Studio 17 2022" -A x64
+        cmake --build . --config Release --parallel 4
+        cmake --install . --prefix ../dist
+
+    - name: Build Core C++ (Unix)
+      if: matrix.os != 'windows-latest'
+      run: |
+        cd core
+        mkdir -p build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=../dist
+        cmake --build . --parallel 4
+        cmake --install . --prefix ../dist
+
+    - name: Build Bridge Node.js
+      run: |
+        cd bridge
+        npm install
+        npm run build
+
+    - name: Build UI
+      run: |
+        cd ui
+        npm install
+        npm run build
+
+    - name: Run Core Tests
+      run: |
+        cd core/build
+        ctest --output-on-failure --build-config Release
+      continue-on-error: true
+
+    - name: Package Application (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        cd ui
+        npm run electron:build
+      continue-on-error: true
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: obs-propio-${{ matrix.os }}
+        path: |
+          ui/dist/*.exe
+          ui/dist/*.yml
+          core/dist/
+          bridge/build/Release/obs_addon.node
+        retention-days: 30
