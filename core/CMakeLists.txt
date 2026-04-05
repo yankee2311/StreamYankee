@@ -21,32 +21,52 @@ endif()
 find_package(Threads REQUIRED)
 find_package(OpenGL REQUIRED)
 
-# FFmpeg (try pkg-config first, then manual search)
-find_package(PkgConfig QUIET)
-if(PkgConfig_FOUND)
-    pkg_check_modules(FFMPEG REQUIRED libavcodec libavformat libavutil libswscale libswresample)
-else()
-    # Manual FFmpeg search
-    set(FFMPEG_ROOT "" CACHE PATH "Path to FFmpeg installation")
-    find_path(FFMPEG_INCLUDE_DIR libavcodec/avcodec.h
-        HINTS ${FFMPEG_ROOT}/include /usr/local/include /usr/include
-        PATH_SUFFIXES ffmpeg)
+# FFmpeg Configuration
+if(WIN32 AND DEFINED ENV{FFMPEG_ROOT})
+    # Explicit Windows configuration for GitHub Actions
+    set(FFMPEG_ROOT "$ENV{FFMPEG_ROOT}")
+    set(FFMPEG_INCLUDE_DIRS "$ENV{FFMPEG_INCLUDE_DIR}")
+    set(FFMPEG_LIB_DIR "$ENV{FFMPEG_LIB_DIR}")
     
-    find_library(FFMPEG_LIBRARY NAMES avcodec avcodec-60
-        HINTS ${FFMPEG_ROOT}/lib /usr/local/lib /usr/lib)
-    
-    if(NOT FFMPEG_INCLUDE_DIR OR NOT FFMPEG_LIBRARY)
-        message(FATAL_ERROR "FFmpeg not found. Please install FFmpeg development files.")
-    endif()
-    
-    set(FFMPEG_INCLUDE_DIRS ${FFMPEG_INCLUDE_DIR})
     set(FFMPEG_LIBRARIES 
-        ${FFMPEG_LIBRARY}
-        avformat-60
-        avutil-58
-        swscale-7
-        swresample-4
+        "${FFMPEG_LIB_DIR}/avcodec.lib"
+        "${FFMPEG_LIB_DIR}/avformat.lib"
+        "${FFMPEG_LIB_DIR}/avutil.lib"
+        "${FFMPEG_LIB_DIR}/swscale.lib"
+        "${FFMPEG_LIB_DIR}/swresample.lib"
     )
+    
+    message(STATUS "Using explicit FFmpeg paths for Windows:")
+    message(STATUS "  Include: ${FFMPEG_INCLUDE_DIRS}")
+    message(STATUS "  Libs: ${FFMPEG_LIBRARIES}")
+else()
+    # Try pkg-config first
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(FFMPEG REQUIRED libavcodec libavformat libavutil libswscale libswresample)
+    else()
+        # Manual FFmpeg search
+        set(FFMPEG_ROOT "" CACHE PATH "Path to FFmpeg installation")
+        find_path(FFMPEG_INCLUDE_DIR libavcodec/avcodec.h
+            HINTS ${FFMPEG_ROOT}/include /usr/local/include /usr/include
+            PATH_SUFFIXES ffmpeg)
+        
+        find_library(FFMPEG_LIBRARY NAMES avcodec avcodec-60
+            HINTS ${FFMPEG_ROOT}/lib /usr/local/lib /usr/lib)
+        
+        if(NOT FFMPEG_INCLUDE_DIR OR NOT FFMPEG_LIBRARY)
+            message(FATAL_ERROR "FFmpeg not found. Please install FFmpeg development files.")
+        endif()
+        
+        set(FFMPEG_INCLUDE_DIRS ${FFMPEG_INCLUDE_DIR})
+        set(FFMPEG_LIBRARIES 
+            ${FFMPEG_LIBRARY}
+            avformat-60
+            avutil-58
+            swscale-7
+            swresample-4
+        )
+    endif()
 endif()
 
 # nlohmann/json (header-only)

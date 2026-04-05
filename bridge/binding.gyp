@@ -26,11 +26,11 @@
         ["OS=='win'", {
           "libraries": [
             "-l../core/build/Release/obs_core.lib",
-            "-lavcodec.lib",
-            "-lavformat.lib",
-            "-lavutil.lib",
-            "-lswscale.lib",
-            "-lswresample.lib",
+            "-l<(module_root_dir)/../ffmpeg/lib/avcodec.lib",
+            "-l<(module_root_dir)/../ffmpeg/lib/avformat.lib",
+            "-l<(module_root_dir)/../ffmpeg/lib/avutil.lib",
+            "-l<(module_root_dir)/../ffmpeg/lib/swscale.lib",
+            "-l<(module_root_dir)/../ffmpeg/lib/swresample.lib",
             "-lole32.lib",
             "-loleaut32.lib",
             "-lstrmiids.lib",

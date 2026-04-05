@@ -9,6 +9,7 @@
 #include <chrono>
 #include <functional>
 #include <optional>
+#include <iostream>
 
 namespace obs {
 
