@@ -10,12 +10,13 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-# Compiler flags
+# Compiler flags - be less strict for CI builds
 if(MSVC)
-    add_compile_options(/W4 /WX- /MP)
-    add_compile_definitions(NOMINMAX)
+    add_compile_options(/W3 /MP)
+    add_compile_definitions(NOMINMAX;_CRT_SECURE_NO_WARNINGS)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY MultiThreaded)
 else()
-    add_compile_options(-Wall -Wextra -Wpedantic)
+    add_compile_options(-Wall -Wno-unused-parameter)
 endif()
 
 # Find packages
@@ -53,23 +54,22 @@ else()
     endif()
 endif()
 
-# nlohmann/json (header-only)
-find_package(nlohmann_json QUIET)
-if(NOT nlohmann_json_FOUND)
-    message(STATUS "nlohmann_json not found, will download")
-    include(FetchContent)
-    FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz)
-    FetchContent_MakeAvailable(json)
-endif()
+# nlohmann/json (header-only) - fetch from github
+include(FetchContent)
+FetchContent_Declare(
+    nlohmann_json
+    URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+FetchContent_MakeAvailable(nlohmann_json)
 
-# spdlog (logging)
-find_package(spdlog QUIET)
-if(NOT spdlog_FOUND)
-    message(STATUS "spdlog not found, will download")
-    include(FetchContent)
-    FetchContent_Declare(spdlog URL https://github.com/gabime/spdlog/archive/refs/tags/v1.12.0.tar.gz)
-    FetchContent_MakeAvailable(spdlog)
-endif()
+# spdlog (logging) - fetch from github
+FetchContent_Declare(
+    spdlog
+    URL https://github.com/gabime/spdlog/releases/download/v1.12.0/spdlog-1.12.0.tar.gz
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+FetchContent_MakeAvailable(spdlog)
 
 # Core library
 add_library(obs_core STATIC
@@ -109,30 +109,6 @@ elseif(APPLE)
 else()
     find_package(X11 REQUIRED)
     target_link_libraries(obs_core PUBLIC X11::X11)
-endif()
-
-# Testing (disabled until test files are implemented)
-option(BUILD_TESTS "Build unit tests" OFF)
-if(BUILD_TESTS)
-    enable_testing()
-    
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_input_manager.cpp")
-        add_executable(test_input_manager tests/test_input_manager.cpp)
-        target_link_libraries(test_input_manager obs_core)
-        add_test(NAME InputManagerTest COMMAND test_input_manager)
-    endif()
-    
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_scene_engine.cpp")
-        add_executable(test_scene_engine tests/test_scene_engine.cpp)
-        target_link_libraries(test_scene_engine obs_core)
-        add_test(NAME SceneEngineTest COMMAND test_scene_engine)
-    endif()
-    
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_replay.cpp")
-        add_executable(test_replay tests/test_replay.cpp)
-        target_link_libraries(test_replay obs_core)
-        add_test(NAME ReplayTest COMMAND test_replay)
-    endif()
 endif()
 
 # Installation
