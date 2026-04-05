@@ -47,7 +47,7 @@ jobs:
         ctest --output-on-failure --verbose
 
     - name: Upload test results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: always()
       with:
         name: core-test-results-linux
@@ -83,7 +83,7 @@ jobs:
         ctest --output-on-failure --verbose -C Debug
 
     - name: Upload test results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: always()
       with:
         name: core-test-results-windows
@@ -120,7 +120,7 @@ jobs:
         ctest --output-on-failure --verbose
 
     - name: Upload test results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: always()
       with:
         name: core-test-results-macos
@@ -249,7 +249,7 @@ jobs:
       continue-on-error: true
 
     - name: Upload benchmark results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: always()
       with:
         name: benchmark-results

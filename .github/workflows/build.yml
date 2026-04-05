@@ -104,7 +104,7 @@ jobs:
         npm run electron:build
 
     - name: Upload Windows Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: obs-propio-windows
         path: |
@@ -200,7 +200,7 @@ jobs:
         npm run electron:build -- --linux AppImage deb
 
     - name: Upload Linux Artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: obs-propio-linux
         path: |
@@ -280,7 +280,7 @@ jobs:
         npm run electron:build -- --mac dmg zip
 
     - name: Upload macOS Artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: obs-propio-macos
         path: |
@@ -317,7 +317,7 @@ jobs:
       continue-on-error: true
 
     - name: Upload Test Results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: always()
       with:
         name: test-results-${{ matrix.os }}-node${{ matrix.node-version }}
