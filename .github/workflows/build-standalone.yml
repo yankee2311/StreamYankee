@@ -64,7 +64,7 @@ jobs:
       run: brew install ffmpeg
 
     - name: Cache Core C++
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: |
           core/build
@@ -73,7 +73,7 @@ jobs:
         restore-keys: core-${{ matrix.os }}-
 
     - name: Cache npm
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: |
           node_modules
