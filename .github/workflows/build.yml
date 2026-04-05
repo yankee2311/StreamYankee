@@ -27,7 +27,7 @@ jobs:
       shell: pwsh
       run: |
         # Download FFmpeg essentials build (MSVC compatible with .lib files)
-        $ffmpegUrl = "https://github.com/GyanD/codexffmpeg/releases/download/7.0.1/ffmpeg-7.0.1-essentials_build.zip"
+        $ffmpegUrl = "https://github.com/GyanD/codexffmpeg/releases/download/7.0.1/ffmpeg-7.0.1-full_build.zip"
         Write-Host "Downloading FFmpeg from $ffmpegUrl"
         Invoke-WebRequest -Uri $ffmpegUrl -OutFile "ffmpeg.zip" -UseBasicParsing
         Expand-Archive -Path "ffmpeg.zip" -DestinationPath "C:\ffmpeg" -Force
