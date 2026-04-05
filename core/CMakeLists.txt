@@ -13,6 +13,7 @@ endif()
 # Compiler flags
 if(MSVC)
     add_compile_options(/W4 /WX- /MP)
+    add_compile_definitions(NOMINMAX)
 else()
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
@@ -21,53 +22,12 @@ endif()
 find_package(Threads REQUIRED)
 find_package(OpenGL REQUIRED)
 
-# FFmpeg Configuration
-if(WIN32 AND DEFINED ENV{FFMPEG_ROOT})
-    # Explicit Windows configuration for GitHub Actions
-    set(FFMPEG_ROOT "$ENV{FFMPEG_ROOT}")
-    set(FFMPEG_INCLUDE_DIRS "$ENV{FFMPEG_INCLUDE_DIR}")
-    set(FFMPEG_LIB_DIR "$ENV{FFMPEG_LIB_DIR}")
-    
-    set(FFMPEG_LIBRARIES 
-        "${FFMPEG_LIB_DIR}/avcodec.lib"
-        "${FFMPEG_LIB_DIR}/avformat.lib"
-        "${FFMPEG_LIB_DIR}/avutil.lib"
-        "${FFMPEG_LIB_DIR}/swscale.lib"
-        "${FFMPEG_LIB_DIR}/swresample.lib"
-    )
-    
-    message(STATUS "Using explicit FFmpeg paths for Windows:")
-    message(STATUS "  Include: ${FFMPEG_INCLUDE_DIRS}")
-    message(STATUS "  Libs: ${FFMPEG_LIBRARIES}")
-else()
-    # Try pkg-config first
-    find_package(PkgConfig QUIET)
-    if(PkgConfig_FOUND)
-        pkg_check_modules(FFMPEG REQUIRED libavcodec libavformat libavutil libswscale libswresample)
-    else()
-        # Manual FFmpeg search
-        set(FFMPEG_ROOT "" CACHE PATH "Path to FFmpeg installation")
-        find_path(FFMPEG_INCLUDE_DIR libavcodec/avcodec.h
-            HINTS ${FFMPEG_ROOT}/include /usr/local/include /usr/include
-            PATH_SUFFIXES ffmpeg)
-        
-        find_library(FFMPEG_LIBRARY NAMES avcodec avcodec-60
-            HINTS ${FFMPEG_ROOT}/lib /usr/local/lib /usr/lib)
-        
-        if(NOT FFMPEG_INCLUDE_DIR OR NOT FFMPEG_LIBRARY)
-            message(FATAL_ERROR "FFmpeg not found. Please install FFmpeg development files.")
-        endif()
-        
-        set(FFMPEG_INCLUDE_DIRS ${FFMPEG_INCLUDE_DIR})
-        set(FFMPEG_LIBRARIES 
-            ${FFMPEG_LIBRARY}
-            avformat-60
-            avutil-58
-            swscale-7
-            swresample-4
-        )
-    endif()
-endif()
+# FFmpeg Configuration via vcpkg
+find_package(avcodec REQUIRED)
+find_package(avformat REQUIRED)
+find_package(avutil REQUIRED)
+find_package(swscale REQUIRED)
+find_package(swresample REQUIRED)
 
 # nlohmann/json (header-only)
 find_package(nlohmann_json QUIET)
@@ -104,20 +64,22 @@ add_library(obs_core STATIC
 
 target_include_directories(obs_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${FFMPEG_INCLUDE_DIRS}
 )
 
 target_link_libraries(obs_core PUBLIC
     Threads::Threads
     OpenGL::GL
+    avcodec::avcodec
+    avformat::avformat
+    avutil::avutil
+    swscale::swscale
+    swresample::swresample
     spdlog::spdlog
     nlohmann_json::nlohmann_json
-    ${FFMPEG_LIBRARIES}
 )
 
 # Platform-specific libs
 if(WIN32)
-    add_compile_definitions(NOMINMAX)
     target_link_libraries(obs_core PUBLIC mfplat mfuuid strmiids)
 elseif(APPLE)
     find_library(FOUNDATION_FRAMEWORK Foundation)
@@ -165,5 +127,4 @@ install(DIRECTORY include/
 # Version info
 message(STATUS "OBS Propio v${PROJECT_VERSION}")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
-message(STATUS "FFmpeg include: ${FFMPEG_INCLUDE_DIRS}")
-message(STATUS "FFmpeg libs: ${FFMPEG_LIBRARIES}")
+message(STATUS "FFmpeg found via vcpkg")

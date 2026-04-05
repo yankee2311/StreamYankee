@@ -26,11 +26,11 @@
         ["OS=='win'", {
           "libraries": [
             "-l../core/build/Release/obs_core.lib",
-            "-l<(module_root_dir)/../ffmpeg/lib/avcodec.lib",
-            "-l<(module_root_dir)/../ffmpeg/lib/avformat.lib",
-            "-l<(module_root_dir)/../ffmpeg/lib/avutil.lib",
-            "-l<(module_root_dir)/../ffmpeg/lib/swscale.lib",
-            "-l<(module_root_dir)/../ffmpeg/lib/swresample.lib",
+            "-lC:/vcpkg/installed/x64-windows-rel/lib/avcodec.lib",
+            "-lC:/vcpkg/installed/x64-windows-rel/lib/avformat.lib",
+            "-lC:/vcpkg/installed/x64-windows-rel/lib/avutil.lib",
+            "-lC:/vcpkg/installed/x64-windows-rel/lib/swscale.lib",
+            "-lC:/vcpkg/installed/x64-windows-rel/lib/swresample.lib",
             "-lole32.lib",
             "-loleaut32.lib",
             "-lstrmiids.lib",
@@ -54,7 +54,7 @@
           ],
           "xcode_settings": {
             "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
-            "CLANG_CXX_LIBRARY": "libc++",
+            "CLANG_CXX_LANGUAGE_STANDARD": "libc++",
             "MACOSX_DEPLOYMENT_TARGET": "10.15",
             "CLANG_CXX_LANGUAGE_STANDARD": "c++17"
           }
