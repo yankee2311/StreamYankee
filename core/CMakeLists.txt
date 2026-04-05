@@ -117,6 +117,7 @@ target_link_libraries(obs_core PUBLIC
 
 # Platform-specific libs
 if(WIN32)
+    add_compile_definitions(NOMINMAX)
     target_link_libraries(obs_core PUBLIC mfplat mfuuid strmiids)
 elseif(APPLE)
     find_library(FOUNDATION_FRAMEWORK Foundation)

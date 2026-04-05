@@ -10,6 +10,7 @@
 #include <functional>
 #include <optional>
 #include <iostream>
+#include <algorithm>
 
 namespace obs {
 
