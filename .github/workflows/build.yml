@@ -7,6 +7,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  FFMPEG_VERSION: '7.0'
+
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -30,11 +33,24 @@ jobs:
       shell: pwsh
       run: |
         $ffmpegUrl = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip"
-        Invoke-WebRequest -Uri $ffmpegUrl -OutFile "ffmpeg.zip"
-        Expand-Archive -Path "ffmpeg.zip" -DestinationPath "C:\ffmpeg"
-        $ffmpegBin = "C:\ffmpeg\ffmpeg-master-latest-win64-gpl-shared\bin"
+        Write-Host "Downloading FFmpeg from $ffmpegUrl"
+        Invoke-WebRequest -Uri $ffmpegUrl -OutFile "ffmpeg.zip" -UseBasicParsing
+        Expand-Archive -Path "ffmpeg.zip" -DestinationPath "C:\ffmpeg" -Force
+        
+        $ffmpegRoot = "C:\ffmpeg\ffmpeg-master-latest-win64-gpl-shared"
+        $ffmpegBin = "$ffmpegRoot\bin"
+        $ffmpegInclude = "$ffmpegRoot\include"
+        $ffmpegLib = "$ffmpegRoot\lib"
+        
+        Write-Host "FFmpeg Root: $ffmpegRoot"
+        Write-Host "FFmpeg Bin: $ffmpegBin"
+        Write-Host "FFmpeg Include: $ffmpegInclude"
+        Write-Host "FFmpeg Lib: $ffmpegLib"
+        
         echo $ffmpegBin >> $env:GITHUB_PATH
-        echo "FFMPEG_ROOT=$ffmpegBin" >> $env:GITHUB_ENV
+        echo "FFMPEG_ROOT=$ffmpegRoot" >> $env:GITHUB_ENV
+        echo "FFMPEG_INCLUDE_DIR=$ffmpegInclude" >> $env:GITHUB_ENV
+        echo "FFMPEG_LIB_DIR=$ffmpegLib" >> $env:GITHUB_ENV
 
     - name: Install Node Dependencies
       run: |
@@ -46,10 +62,20 @@ jobs:
       shell: pwsh
       run: |
         cd core
-        if (-not (Test-Path build)) { New-Item -ItemType Directory -Path build }
+        if (-not (Test-Path build)) { New-Item -ItemType Directory -Path build | Out-Null }
         cd build
-        cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release
-        cmake --build . --config Release
+        
+        $ffmpegRoot = $env:FFMPEG_ROOT
+        
+        cmake .. `
+          -G "Visual Studio 17 2022" `
+          -A x64 `
+          -DCMAKE_BUILD_TYPE=Release `
+          -DFFMPEG_ROOT="$ffmpegRoot" `
+          -DFFMPEG_INCLUDE_DIR="$ffmpegRoot\include" `
+          -DBUILD_TESTS=OFF
+        
+        cmake --build . --config Release --parallel
 
     - name: Build Bridge
       run: |
@@ -65,11 +91,14 @@ jobs:
       shell: pwsh
       run: |
         $distDir = "dist"
-        if (-not (Test-Path $distDir)) { New-Item -ItemType Directory -Path $distDir }
+        if (-not (Test-Path $distDir)) { New-Item -ItemType Directory -Path $distDir | Out-Null }
         
         Copy-Item -Path "core\build\Release\*" -Destination $distDir -Recurse -Force -ErrorAction SilentlyContinue
         Copy-Item -Path "bridge\build\Release\*.node" -Destination $distDir -ErrorAction SilentlyContinue
-        Copy-Item -Path "ui\dist\*" -Destination $distDir -Recurse -Force -ErrorAction SilentlyContinue
+        
+        if (Test-Path "ui\dist") {
+          Copy-Item -Path "ui\dist\*" -Destination $distDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
@@ -77,3 +106,4 @@ jobs:
         name: OBS-Propio-Windows
         path: dist/
         retention-days: 30
+        if-no-files-found: warn

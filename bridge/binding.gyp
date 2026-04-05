@@ -7,11 +7,7 @@
       "cflags": ["-std=c++17", "-fPIC"],
       "cflags_cc": ["-std=c++17", "-fPIC"],
       "sources": [
-        "src/obs_addon.cc",
-        "src/input_manager_wrapper.cc",
-        "src/scene_engine_wrapper.cc",
-        "src/output_engine_wrapper.cc",
-        "src/replay_engine_wrapper.cc"
+        "src/obs_addon.cc"
       ],
       "include_dirs": [
         "<!@(node -p \"require('node-addon-api').include\")",
