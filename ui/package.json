@@ -32,6 +32,6 @@
     "vite-plugin-electron": "^0.28.0",
     "vite-plugin-electron-renderer": "^0.14.0",
     "wait-on": "^7.2.0",
-    "concurrently": "^8.2.0"
+    "concurrently": "^9.2.1"
   }
 }
