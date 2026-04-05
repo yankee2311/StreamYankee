@@ -4,7 +4,6 @@
   "description": "Node.js native addon bridge for OBS Propio C++ core",
   "main": "build/Release/obs_addon.node",
   "scripts": {
-    "install": "node-gyp rebuild",
     "build": "node-gyp build",
     "build:debug": "node-gyp build --debug",
     "clean": "node-gyp clean"

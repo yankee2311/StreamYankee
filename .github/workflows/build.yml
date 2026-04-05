@@ -52,11 +52,8 @@ jobs:
         echo "FFMPEG_INCLUDE_DIR=$ffmpegInclude" >> $env:GITHUB_ENV
         echo "FFMPEG_LIB_DIR=$ffmpegLib" >> $env:GITHUB_ENV
 
-    - name: Install Node Dependencies
-      run: |
-        npm install
-        cd bridge && npm install && cd ..
-        cd ui && npm install && cd ..
+    - name: Install Root Dependencies
+      run: npm install
 
     - name: Build Core
       shell: pwsh
@@ -77,10 +74,27 @@ jobs:
         
         cmake --build . --config Release --parallel
 
-    - name: Build Bridge
+    - name: Install Bridge Dependencies
       run: |
         cd bridge
+        npm install --ignore-scripts
+        cd ..
+
+    - name: Build Bridge
+      shell: pwsh
+      run: |
+        cd bridge
+        
+        # Set environment for node-gyp to find FFmpeg
+        $ffmpegRoot = $env:FFMPEG_ROOT
+        
         npm run build
+
+    - name: Install UI Dependencies
+      run: |
+        cd ui
+        npm install
+        cd ..
 
     - name: Build UI
       run: |
