@@ -52,7 +52,7 @@ jobs:
         echo "C:\ProgramData\chocolatey\bin" >> $env:GITHUB_PATH
 
     - name: Cache Core C++
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: |
           core/build
@@ -62,7 +62,7 @@ jobs:
           core-windows-
 
     - name: Cache Node modules
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: |
           node_modules
@@ -159,7 +159,7 @@ jobs:
         python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Cache Core C++
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: |
           core/build
@@ -239,7 +239,7 @@ jobs:
         python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Cache Core C++
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: |
           core/build
